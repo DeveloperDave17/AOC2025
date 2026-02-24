@@ -38,18 +38,21 @@ fn main() {
     println!("Part one: {}", fresh_ingredient_ids.len());
 
     loop {
+        // used to cache overlap indices
         let mut target_range = 0;
         let mut matching_range = 0;
-        // Find areas of overlap and remove them
+        // Find areas of overlap
         for i in 0..fresh_ingredient_ranges.len() {
             for j in 0..fresh_ingredient_ranges.len() {
                 if j == i {
                     continue;
                 }
+                // Check if the lower bound of the other range falls within the current range
                 if fresh_ingredient_ranges[i][0] <= fresh_ingredient_ranges[j][0] && fresh_ingredient_ranges[i][1] >= fresh_ingredient_ranges[j][0] {
                     target_range = i;
                     matching_range = j;
                 }
+                // Check if the upper bound of the other range falls within the current range
                 else if fresh_ingredient_ranges[i][0] <= fresh_ingredient_ranges[j][1] && fresh_ingredient_ranges[i][1] >= fresh_ingredient_ranges[j][1] {
                     target_range = i;
                     matching_range = j;
@@ -64,12 +67,12 @@ fn main() {
             }
         }
 
+        // no more overlap end loop
         if target_range == matching_range {
             break;
         }
 
-
-        // Handle shortening ranges
+        // Handle shortening ranges, remove overlap
         if fresh_ingredient_ranges[target_range][0] <= fresh_ingredient_ranges[matching_range][0] && fresh_ingredient_ranges[target_range][1] >= fresh_ingredient_ranges[matching_range][0] {
             fresh_ingredient_ranges[matching_range][0] = fresh_ingredient_ranges[target_range][1] + 1;
         } else {
