@@ -15,6 +15,7 @@ fn main() {
     for line in reader.lines() 
     {
         let line = line.expect("An error occurred while attempting to read a line.");
+        // Check for end of fresh ID ranges
         if line == ""
         {
             loading_fresh_ids = false;
@@ -23,10 +24,11 @@ fn main() {
         if loading_fresh_ids 
         {
             let line: Vec<&str> = line.split("-").collect();
-            fresh_ingredient_ranges.push(line.iter().map(|x| x.parse::<u64>().expect("")).collect());
+            fresh_ingredient_ranges.push(line.iter().map(|x| x.parse::<u64>().expect("Error parsing range")).collect());
         }
         else {
             let id = line.parse::<u64>().expect("");
+            // Check ranges to see if ingredient is fresh
             for range in &fresh_ingredient_ranges {
                 if id >= range[0] && id <= range[1] {
                     fresh_ingredient_ids.insert(id);
@@ -58,30 +60,36 @@ fn main() {
                     matching_range = j;
                 }
 
+                // found an overlapping bound
                 if target_range != matching_range {
                     break;
                 }
             }
+            // found an overlapping bound
             if target_range != matching_range {
                 break;
             }
         }
 
-        // no more overlap end loop
+        // no more overlap end loop, entire fresh ID range list is checked at this point
         if target_range == matching_range {
             break;
         }
 
         // Handle shortening ranges, remove overlap
-        if fresh_ingredient_ranges[target_range][0] <= fresh_ingredient_ranges[matching_range][0] && fresh_ingredient_ranges[target_range][1] >= fresh_ingredient_ranges[matching_range][0] {
+        if fresh_ingredient_ranges[target_range][0] <= fresh_ingredient_ranges[matching_range][0] 
+            && fresh_ingredient_ranges[target_range][1] >= fresh_ingredient_ranges[matching_range][0] {
+            // adjusting lower bound
             fresh_ingredient_ranges[matching_range][0] = fresh_ingredient_ranges[target_range][1] + 1;
         } else {
+            // adjusting upper bound
             fresh_ingredient_ranges[matching_range][1] = fresh_ingredient_ranges[target_range][0] - 1;
         }
     }
 
 
     for range in fresh_ingredient_ranges {
+        // handle edge case of adjustment creating an invalid range
         if range[1] >= range[0] {
             // inclusive range requires adding 1
             num_ids_fresh += range[1] - range[0] + 1;
