@@ -33,12 +33,17 @@ fn main() {
         junction_boxes_kd_tree.add([junction_box.x as f64, junction_box.y as f64, junction_box.z as f64], junction_box).unwrap();
     }
 
+    println!("part one: {}", part_one(&junction_boxes, &junction_boxes_kd_tree));
+    println!("part two: {}", part_two(&junction_boxes, &junction_boxes_kd_tree));
+}
+
+fn part_one(junction_boxes: &Vec<JunctionBox>, junction_boxes_kd_tree: &KdTree<f64, &JunctionBox, [f64;3]>) -> usize {
     let mut closest_pairs: Vec<(&JunctionBox, &JunctionBox)> = Vec::new();
 
     while closest_pairs.len() < 1000 {
         let mut closest_pair: Option<(&JunctionBox, &JunctionBox)> = Option::None;
         let mut closest_distance: f64 = f64::MAX;
-        for junction_box in &junction_boxes {
+        for junction_box in junction_boxes {
             let mut n_nearest = 2;
             let (mut distance, mut closest_box): (f64, &&JunctionBox) = junction_boxes_kd_tree.nearest(&[junction_box.x as f64, junction_box.y as f64, junction_box.z as f64], n_nearest, &squared_euclidean).unwrap()[n_nearest - 1];
             while closest_pairs.contains(&(junction_box, *closest_box)) || closest_pairs.contains(&(*closest_box, junction_box)) {
@@ -117,6 +122,79 @@ fn main() {
             third_longest = length;
         }
     }
+    longest * second_longest * third_longest
+}
 
-    println!("part one: {}", longest * second_longest * third_longest);
+fn part_two(junction_boxes: &Vec<JunctionBox>, junction_boxes_kd_tree: &KdTree<f64, &JunctionBox, [f64;3]>) -> u64 {
+    let mut last_x_coords_multiplied: u64 = 0;
+    let mut circuit_map: HashMap<&JunctionBox, i32> = HashMap::new();
+    let mut circuit_count = 0;
+
+    for junction_box in junction_boxes {
+        circuit_map.insert(junction_box, -1);
+    }
+
+    let mut completed = false;
+
+    while !completed {
+        let mut closest_pair: Option<(&JunctionBox, &JunctionBox)> = Option::None;
+        let mut closest_distance: f64 = f64::MAX;
+        for junction_box in junction_boxes {
+            let point = [junction_box.x as f64, junction_box.y as f64, junction_box.z as f64];
+            let mut iter = junction_boxes_kd_tree.iter_nearest(&point, &squared_euclidean).unwrap();
+            // advance iterator past matching with self
+            iter.next();
+            let (mut distance, mut closest_box) : (f64, &&JunctionBox) = iter.next().unwrap();
+            let group_1: i32 = *circuit_map.get(junction_box).expect("");
+            let mut group_2: i32 = *circuit_map.get(closest_box).expect("");
+            let mut no_more_matches = false;
+            while  group_1 != -1 && group_2 != -1 && (group_1 == group_2) && !no_more_matches {
+                let possible_match = iter.next();
+                match possible_match {
+                    Some(pair_info) => {
+                        (distance, closest_box) = pair_info;
+                        group_2 = *circuit_map.get(closest_box).expect("");
+                    },
+                    None => {
+                        no_more_matches = true;
+                        distance = f64::MAX;
+                    }
+                }
+            }
+            if distance < closest_distance {
+                closest_distance = distance;
+                closest_pair = Option::Some((junction_box, *closest_box));
+            }
+        }
+
+        match closest_pair {
+            Some(pair) => {
+                let group_1: i32 = *circuit_map.get(pair.0).expect("");
+                let group_2: i32 = *circuit_map.get(pair.1).expect("");
+                if group_1 == -1 && group_2 == -1 {
+                    // create a new circuit
+                    circuit_map.insert(pair.0, circuit_count);
+                    circuit_map.insert(pair.1, circuit_count);
+                    circuit_count += 1;
+                } else if group_1 == -1 {
+                    circuit_map.insert(pair.0, group_2);
+                } else if group_2 == -1 {
+                    circuit_map.insert(pair.1, group_1);
+                } else {
+                    let group_to_merge: Vec<&JunctionBox> = circuit_map.iter().filter(|(_, &group)| group == group_2).map(|(&junction, _)| junction).collect();
+                    // update boxes groups
+                    for junc_box in group_to_merge {
+                        circuit_map.insert(junc_box, group_1);
+                    }
+                }
+
+                last_x_coords_multiplied = pair.0.x as u64 * pair.1.x as u64;
+            }
+            _ => {
+                completed = true;
+            }
+        }
+    }
+
+    last_x_coords_multiplied
 }
